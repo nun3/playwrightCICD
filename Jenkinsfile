@@ -1,10 +1,5 @@
 pipeline {
-    agent {
-        docker {
-            image 'mcr.microsoft.com/playwright:v1.30.0-focal'
-            args '-v /dev/shm:/dev/shm'
-        }
-    }
+    agent any
 
     stages {
         stage('Checkout') {
@@ -17,6 +12,12 @@ pipeline {
         stage('Install Dependencies') {
             steps {
                 sh 'npm install'
+            }
+        }
+
+        stage('Install Playwright Browsers') {
+            steps {
+                sh 'npx playwright install --with-deps'
             }
         }
 
