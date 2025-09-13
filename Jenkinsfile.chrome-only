@@ -43,25 +43,9 @@ pipeline {
 
         stage('Run Tests (Chrome only)') {
             steps {
-                sh 'npx playwright test --project=chromium --reporter=allure'
+                sh 'npx playwright test --project=chromium'
+                allure includeProperties: false, jdk: '', results: [[path: 'allure-results']]
             }
-        }
-    }
-
-    post {
-        always {
-            // Gerar relatório Allure
-            allure([
-                includeProperties: false,
-                jdk: '',
-                properties: [],
-                reportBuildPolicy: 'ALWAYS',
-                results: [[path: 'allure-results']]
-            ])
-            
-            // Arquivos de evidência
-            archiveArtifacts artifacts: 'test-results/**/*', allowEmptyArchive: true
-            archiveArtifacts artifacts: 'allure-results/**/*', allowEmptyArchive: true
         }
     }
 }
