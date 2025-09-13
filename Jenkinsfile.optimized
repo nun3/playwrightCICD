@@ -65,18 +65,9 @@ pipeline {
 
     post {
         always {
-            // Publicar relatórios HTML
-            publishHTML([
-                allowMissing: false,
-                alwaysLinkToLastBuild: true,
-                keepAll: true,
-                reportDir: 'playwright-report',
-                reportFiles: 'index.html',
-                reportName: 'Playwright Test Report'
-            ])
-            
             // Arquivos de evidência (screenshots, traces)
             archiveArtifacts artifacts: 'test-results/**/*', allowEmptyArchive: true
+            archiveArtifacts artifacts: 'playwright-report/**/*', allowEmptyArchive: true
         }
         
         failure {
