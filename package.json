@@ -7,7 +7,10 @@
     "test:headed": "playwright test --headed",
     "test:ui": "playwright test --ui",
     "test:report": "playwright show-report",
-    "test:install": "playwright install --with-deps"
+    "test:install": "playwright install --with-deps",
+    "test:allure": "playwright test --reporter=allure",
+    "allure:serve": "allure serve allure-results",
+    "allure:generate": "allure generate allure-results --clean"
   },
   "keywords": [],
   "author": "",
@@ -15,6 +18,7 @@
   "description": "",
   "devDependencies": {
     "@playwright/test": "^1.55.0",
-    "@types/node": "^24.3.2"
+    "@types/node": "^24.3.2",
+    "allure-playwright": "^3.4.1"
   }
 }
