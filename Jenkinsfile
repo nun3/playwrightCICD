@@ -23,20 +23,18 @@ pipeline {
    
    post {
       always {
-         node('master') {
-            // Publicar relatórios de teste
-            publishHTML([
-               allowMissing: false,
-               alwaysLinkToLastBuild: true,
-               keepAll: true,
-               reportDir: 'playwright-report',
-               reportFiles: 'index.html',
-               reportName: 'Playwright Test Report'
-            ])
-            
-            // Arquivos de evidência (screenshots, traces)
-            archiveArtifacts artifacts: 'test-results/**/*', allowEmptyArchive: true
-         }
+         // Publicar relatórios de teste
+         publishHTML([
+            allowMissing: false,
+            alwaysLinkToLastBuild: true,
+            keepAll: true,
+            reportDir: 'playwright-report',
+            reportFiles: 'index.html',
+            reportName: 'Playwright Test Report'
+         ])
+         
+         // Arquivos de evidência (screenshots, traces)
+         archiveArtifacts artifacts: 'test-results/**/*', allowEmptyArchive: true
       }
       
       failure {
