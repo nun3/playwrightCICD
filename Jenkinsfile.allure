@@ -41,7 +41,7 @@ pipeline {
             }
         }
 
-        stage('Run Tests (Chrome only)') {
+        stage('Run Tests with Allure') {
             steps {
                 sh 'npx playwright test --project=chromium --reporter=allure'
             }
@@ -62,6 +62,15 @@ pipeline {
             // Arquivos de evidência
             archiveArtifacts artifacts: 'test-results/**/*', allowEmptyArchive: true
             archiveArtifacts artifacts: 'allure-results/**/*', allowEmptyArchive: true
+        }
+        
+        failure {
+            echo 'Pipeline falhou! Verifique o relatório Allure para mais detalhes.'
+        }
+        
+        success {
+            echo 'Pipeline executado com sucesso!'
+            echo '📊 Relatório Allure disponível na página do build'
         }
     }
 }
