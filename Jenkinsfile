@@ -23,7 +23,7 @@ pipeline {
    
    post {
       always {
-         node {
+         node('master') {
             // Publicar relatórios de teste
             publishHTML([
                allowMissing: false,
