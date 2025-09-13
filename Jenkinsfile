@@ -1,6 +1,10 @@
 pipeline {
    agent { docker { image 'mcr.microsoft.com/playwright:v1.55.0-noble' } }
    
+   environment {
+      CI = 'true'
+   }
+   
    stages {
       stage('Checkout') {
          steps {
@@ -14,6 +18,12 @@ pipeline {
          }
       }
       
+      stage('Install Playwright Browsers') {
+         steps {
+            sh 'npx playwright install --with-deps'
+         }
+      }
+      
       stage('Run Playwright Tests') {
          steps {
             sh 'npx playwright test'
@@ -23,7 +33,7 @@ pipeline {
    
    post {
       always {
-         // Publicar relatórios de teste
+         // Publicar relatórios HTML
          publishHTML([
             allowMissing: false,
             alwaysLinkToLastBuild: true,
@@ -32,6 +42,9 @@ pipeline {
             reportFiles: 'index.html',
             reportName: 'Playwright Test Report'
          ])
+         
+         // Publicar resultados JUnit
+         junit 'test-results/junit.xml'
          
          // Arquivos de evidência (screenshots, traces)
          archiveArtifacts artifacts: 'test-results/**/*', allowEmptyArchive: true
