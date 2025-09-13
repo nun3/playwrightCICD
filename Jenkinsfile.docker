@@ -1,25 +1,16 @@
 pipeline {
-    agent any
+    agent {
+        docker {
+            image 'node:18-bullseye'
+            args '-v /dev/shm:/dev/shm'
+        }
+    }
 
     stages {
         stage('Checkout') {
             steps {
                 // Clona o seu repositório específico
                 git branch: 'main', url: 'https://github.com/nun3/playwrightCICD.git'
-            }
-        }
-
-        stage('Install Node.js') {
-            steps {
-                sh '''
-                    # Instalar Node.js 18
-                    curl -fsSL https://deb.nodesource.com/setup_18.x | sudo -E bash -
-                    sudo apt-get install -y nodejs
-                    
-                    # Verificar instalação
-                    node --version
-                    npm --version
-                '''
             }
         }
 
