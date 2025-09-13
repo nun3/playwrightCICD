@@ -17,6 +17,7 @@ services:
       - JAVA_OPTS=-Djenkins.install.runSetupWizard=false
       - JENKINS_ADMIN_ID=admin
       - JENKINS_ADMIN_PASSWORD=admin123
+      - DOCKER_HOST=unix:///var/run/docker.sock
     networks:
       - jenkins-network
     privileged: true
