@@ -12,9 +12,10 @@ pipeline {
         stage('Install Node.js') {
             steps {
                 sh '''
-                    # Instalar Node.js 18
-                    curl -fsSL https://deb.nodesource.com/setup_18.x | sudo -E bash -
-                    sudo apt-get install -y nodejs
+                    # Instalar Node.js 18 sem sudo
+                    curl -fsSL https://deb.nodesource.com/setup_18.x | bash -
+                    apt-get update
+                    apt-get install -y nodejs
                     
                     # Verificar instalação
                     node --version
