@@ -46,12 +46,52 @@ pipeline {
                 sh 'npx playwright test --project=chromium --reporter=html'
             }
         }
+
+        stage('Generate Test Report') {
+            steps {
+                sh '''
+                    # Gerar relatório HTML se não foi gerado automaticamente
+                    if [ ! -f "playwright-report/index.html" ]; then
+                        echo "Gerando relatório HTML..."
+                        npx playwright show-report --host 0.0.0.0 --port 8081 &
+                        sleep 5
+                        curl -s http://localhost:8081 > playwright-report/index.html || echo "Relatório não pôde ser gerado"
+                    fi
+                    
+                    # Listar arquivos do relatório
+                    echo "Arquivos do relatório:"
+                    ls -la playwright-report/ || echo "Diretório playwright-report não encontrado"
+                '''
+            }
+        }
     }
 
     post {
         always {
+            // Arquivos de evidência (screenshots, traces)
             archiveArtifacts artifacts: 'test-results/**/*', allowEmptyArchive: true
+            
+            // Relatório HTML
             archiveArtifacts artifacts: 'playwright-report/**/*', allowEmptyArchive: true
+            
+            // Criar link para o relatório
+            script {
+                if (fileExists('playwright-report/index.html')) {
+                    echo "✅ Relatório HTML gerado com sucesso!"
+                    echo "📊 Acesse o relatório nos artefatos do build"
+                } else {
+                    echo "⚠️ Relatório HTML não foi gerado"
+                }
+            }
+        }
+        
+        failure {
+            echo 'Pipeline falhou! Verifique os relatórios para mais detalhes.'
+        }
+        
+        success {
+            echo 'Pipeline executado com sucesso!'
+            echo '📊 Relatório disponível nos artefatos do build'
         }
     }
 }
