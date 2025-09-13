@@ -1,0 +1,57 @@
+pipeline {
+    agent any
+
+    stages {
+        stage('Checkout') {
+            steps {
+                git branch: 'main', url: 'https://github.com/nun3/playwrightCICD.git'
+            }
+        }
+
+        stage('Install Node.js (Skip if exists)') {
+            steps {
+                sh '''
+                    if ! command -v node &> /dev/null; then
+                        echo "Instalando Node.js 18..."
+                        curl -fsSL https://deb.nodesource.com/setup_18.x | bash -
+                        apt-get update && apt-get install -y nodejs
+                    else
+                        echo "Node.js já instalado: $(node --version)"
+                    fi
+                '''
+            }
+        }
+
+        stage('Install Dependencies') {
+            steps {
+                sh 'npm ci'
+            }
+        }
+
+        stage('Install Playwright Browsers (Chrome only)') {
+            steps {
+                sh '''
+                    if [ ! -d "$HOME/.cache/ms-playwright" ]; then
+                        echo "Instalando apenas Chrome..."
+                        npx playwright install chromium --with-deps
+                    else
+                        echo "Browsers já instalados, pulando instalação"
+                    fi
+                '''
+            }
+        }
+
+        stage('Run Tests (Chrome only)') {
+            steps {
+                sh 'npx playwright test --project=chromium --reporter=line'
+            }
+        }
+    }
+
+    post {
+        always {
+            archiveArtifacts artifacts: 'test-results/**/*', allowEmptyArchive: true
+            archiveArtifacts artifacts: 'playwright-report/**/*', allowEmptyArchive: true
+        }
+    }
+}
