@@ -1,5 +1,9 @@
 pipeline {
-   agent { docker { image 'mcr.microsoft.com/playwright:v1.55.0-noble' } }
+   agent any
+   
+   tools {
+      nodejs '18' // Assumindo que Node.js 18 está configurado no Jenkins
+   }
    
    stages {
       stage('Checkout') {
@@ -11,6 +15,12 @@ pipeline {
       stage('Install Dependencies') {
          steps {
             sh 'npm ci'
+         }
+      }
+      
+      stage('Install Playwright Browsers') {
+         steps {
+            sh 'npx playwright install --with-deps'
          }
       }
       
