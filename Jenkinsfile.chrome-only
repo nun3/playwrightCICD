@@ -31,13 +31,7 @@ pipeline {
 
         stage('Install Dependencies') {
             steps {
-                sh '''
-                    echo "Instalando dependências..."
-                    npm ci
-                    echo "Verificando se allure-playwright está instalado..."
-                    npm list allure-playwright || echo "allure-playwright não encontrado, instalando..."
-                    npm install allure-playwright --save-dev
-                '''
+                sh 'npm ci'
             }
         }
 
@@ -56,7 +50,8 @@ pipeline {
 
         stage('Run Tests (Chrome only)') {
             steps {
-                sh 'npx playwright test --project=chromium --reporter=allure'
+                sh 'npx playwright test --project=chromium'
+                allure includeProperties: false, jdk: '', results: [[path: 'allure-results']]
             }
         }
 
@@ -146,19 +141,6 @@ EOF
 
     post {
         always {
-            // Gerar relatório Allure
-            allure([
-                includeProperties: false,
-                jdk: '',
-                properties: [],
-                reportBuildPolicy: 'ALWAYS',
-                results: [[path: 'allure-results']]
-            ])
-            
-            // Arquivos de evidência
-            archiveArtifacts artifacts: 'test-results/**/*', allowEmptyArchive: true
-            archiveArtifacts artifacts: 'allure-results/**/*', allowEmptyArchive: true
-            
             // Limpar arquivos temporários
             sh 'rm -rf /tmp/evidence-upload /tmp/reports-upload'
         }
