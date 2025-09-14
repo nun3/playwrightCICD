@@ -1,45 +1,164 @@
 pipeline {
     agent any
 
+    environment {
+        CI = 'true'
+        NEXUS_URL = 'http://nexus:8081'
+        NEXUS_USER = 'jenkins'
+        NEXUS_PASS = 'jenkins123'
+    }
+
     stages {
         stage('Checkout') {
             steps {
-                // Clona o seu repositório específico
-                git branch: 'main', url: 'https://github.com/nun3/playwrightCICD.git'
+                checkout scm
             }
         }
 
-        stage('Install Node.js') {
+        stage('Install Node.js (if not present)') {
             steps {
                 sh '''
-                    # Instalar Node.js 18 sem sudo
-                    curl -fsSL https://deb.nodesource.com/setup_18.x | bash -
-                    apt-get update
-                    apt-get install -y nodejs
-                    
-                    # Verificar instalação
-                    node --version
-                    npm --version
+                    if ! command -v node &> /dev/null
+                    then
+                        echo "Instalando Node.js 18..."
+                        curl -fsSL https://deb.nodesource.com/setup_18.x | bash -
+                        apt-get update
+                        apt-get install -y nodejs
+                    else
+                        echo "Node.js já está instalado."
+                    fi
                 '''
             }
         }
 
-        stage('Install Dependencies') {
+        stage('Install Dependencies (npm ci)') {
             steps {
-                sh 'npm install'
+                sh 'npm ci'
             }
         }
 
-        stage('Install Playwright Browsers') {
+        stage('Install Playwright Browsers (if not present)') {
             steps {
-                sh 'npx playwright install --with-deps'
+                sh '''
+                    if ! npx playwright --version &> /dev/null
+                    then
+                        echo "Instalando Playwright browsers..."
+                        npx playwright install --with-deps
+                    else
+                        echo "Playwright browsers já estão instalados."
+                    fi
+                '''
             }
         }
 
-        stage('Run Playwright Tests') {
+        stage('Run Tests (Chrome only)') {
             steps {
-                sh 'npx playwright test'
+                sh 'npx playwright test --project=chromium --reporter=allure'
             }
+        }
+
+        stage('Upload Evidence to Nexus') {
+            steps {
+                script {
+                    def timestamp = new Date().format('yyyy-MM-dd_HH-mm-ss')
+                    def buildNumber = env.BUILD_NUMBER
+                    
+                    // Upload screenshots e videos
+                    sh '''
+                        echo "📤 Fazendo upload das evidências para o Nexus..."
+                        
+                        # Criar diretório temporário
+                        mkdir -p /tmp/evidence-upload
+                        
+                        # Copiar evidências
+                        cp -r test-results/screenshots /tmp/evidence-upload/ 2>/dev/null || echo "Nenhuma screenshot encontrada"
+                        cp -r test-results/videos /tmp/evidence-upload/ 2>/dev/null || echo "Nenhum vídeo encontrado"
+                        cp -r allure-results /tmp/evidence-upload/ 2>/dev/null || echo "Nenhum resultado Allure encontrado"
+                        
+                        # Criar arquivo de informações do build
+                        cat > /tmp/evidence-upload/build-info.txt << EOF
+Build Number: ${BUILD_NUMBER}
+Timestamp: ${timestamp}
+Branch: ${GIT_BRANCH}
+Commit: ${GIT_COMMIT}
+Jenkins URL: ${BUILD_URL}
+EOF
+                        
+                        # Fazer upload para Nexus
+                        cd /tmp/evidence-upload
+                        tar -czf evidence-${BUILD_NUMBER}-${timestamp}.tar.gz *
+                        
+                        # Upload usando curl
+                        curl -u ${NEXUS_USER}:${NEXUS_PASS} \
+                             --upload-file evidence-${BUILD_NUMBER}-${timestamp}.tar.gz \
+                             ${NEXUS_URL}/repository/playwright-evidence/evidence-${BUILD_NUMBER}-${timestamp}.tar.gz
+                        
+                        echo "✅ Upload concluído!"
+                        echo "🔗 URL: ${NEXUS_URL}/repository/playwright-evidence/evidence-${BUILD_NUMBER}-${timestamp}.tar.gz"
+                    '''
+                }
+            }
+        }
+
+        stage('Upload Reports to Nexus') {
+            steps {
+                script {
+                    def timestamp = new Date().format('yyyy-MM-dd_HH-mm-ss')
+                    def buildNumber = env.BUILD_NUMBER
+                    
+                    sh '''
+                        echo "📤 Fazendo upload dos relatórios para o Nexus..."
+                        
+                        # Criar diretório temporário para relatórios
+                        mkdir -p /tmp/reports-upload
+                        
+                        # Copiar relatórios
+                        cp -r test-results /tmp/reports-upload/ 2>/dev/null || echo "Nenhum resultado de teste encontrado"
+                        cp -r allure-results /tmp/reports-upload/ 2>/dev/null || echo "Nenhum resultado Allure encontrado"
+                        
+                        # Criar arquivo de informações do build
+                        cat > /tmp/reports-upload/build-info.txt << EOF
+Build Number: ${BUILD_NUMBER}
+Timestamp: ${timestamp}
+Branch: ${GIT_BRANCH}
+Commit: ${GIT_COMMIT}
+Jenkins URL: ${BUILD_URL}
+EOF
+                        
+                        # Fazer upload para Nexus
+                        cd /tmp/reports-upload
+                        tar -czf reports-${BUILD_NUMBER}-${timestamp}.tar.gz *
+                        
+                        # Upload usando curl
+                        curl -u ${NEXUS_USER}:${NEXUS_PASS} \
+                             --upload-file reports-${BUILD_NUMBER}-${timestamp}.tar.gz \
+                             ${NEXUS_URL}/repository/playwright-reports/reports-${BUILD_NUMBER}-${timestamp}.tar.gz
+                        
+                        echo "✅ Upload de relatórios concluído!"
+                        echo "🔗 URL: ${NEXUS_URL}/repository/playwright-reports/reports-${BUILD_NUMBER}-${timestamp}.tar.gz"
+                    '''
+                }
+            }
+        }
+    }
+
+    post {
+        always {
+            // Gerar relatório Allure
+            allure([
+                includeProperties: false,
+                jdk: '',
+                properties: [],
+                reportBuildPolicy: 'ALWAYS',
+                results: [[path: 'allure-results']]
+            ])
+            
+            // Arquivos de evidência
+            archiveArtifacts artifacts: 'test-results/**/*', allowEmptyArchive: true
+            archiveArtifacts artifacts: 'allure-results/**/*', allowEmptyArchive: true
+            
+            // Limpar arquivos temporários
+            sh 'rm -rf /tmp/evidence-upload /tmp/reports-upload'
         }
     }
 }
