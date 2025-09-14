@@ -22,23 +22,31 @@ docker-compose up -d
 echo "⏳ Aguardando Jenkins inicializar..."
 sleep 30
 
+# Aguardar Nexus inicializar
+echo "⏳ Aguardando Nexus inicializar..."
+sleep 30
+
 # Verificar se Jenkins está rodando
 if curl -s http://localhost:8080/login > /dev/null; then
     echo "✅ Jenkins está rodando!"
     echo ""
-    echo "🌐 Acesse: http://localhost:8080"
+    echo "🌐 Jenkins: http://localhost:8080"
+    echo "🌐 Nexus: http://localhost:8081"
     echo ""
-    echo "🔑 Para obter a senha inicial, execute:"
-    echo "   docker-compose logs"
+    echo "🔑 Para obter a senha inicial do Jenkins, execute:"
+    echo "   docker-compose logs jenkins"
+    echo ""
+    echo "🔑 Para obter a senha inicial do Nexus, execute:"
+    echo "   docker-compose logs nexus | grep 'admin.password'"
     echo ""
     echo "📋 Próximos passos:"
-    echo "1. Acesse o Jenkins no navegador"
-    echo "2. Cole a senha inicial dos logs"
-    echo "3. Configure seu usuário admin"
-    echo "4. Crie um novo job Pipeline"
-    echo "5. Use o Jenkinsfile do repositório"
+    echo "1. Acesse o Jenkins: http://localhost:8080"
+    echo "2. Acesse o Nexus: http://localhost:8081"
+    echo "3. Configure ambos com as senhas dos logs"
+    echo "4. Configure o Nexus como repositório de artefatos"
+    echo "5. Execute o pipeline no Jenkins"
     echo ""
-    echo "🛑 Para parar o Jenkins:"
+    echo "🛑 Para parar tudo:"
     echo "   docker-compose down"
 else
     echo "❌ Jenkins não está respondendo. Verifique os logs:"
