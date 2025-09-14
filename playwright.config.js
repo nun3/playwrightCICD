@@ -37,6 +37,10 @@ export default defineConfig({
     trace: 'on-first-retry',
     screenshot: 'on',
     video: 'on',
+    
+    /* Timeout configurations for CI stability */
+    actionTimeout: 30000,
+    navigationTimeout: 60000,
   },
 
   /* Configure projects for major browsers */
