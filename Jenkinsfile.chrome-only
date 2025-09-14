@@ -31,7 +31,13 @@ pipeline {
 
         stage('Install Dependencies') {
             steps {
-                sh 'npm ci'
+                sh '''
+                    echo "Instalando dependências..."
+                    npm ci
+                    echo "Verificando se allure-playwright está instalado..."
+                    npm list allure-playwright || echo "allure-playwright não encontrado, instalando..."
+                    npm install allure-playwright --save-dev
+                '''
             }
         }
 
