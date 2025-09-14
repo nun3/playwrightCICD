@@ -69,74 +69,74 @@ pipeline {
                 allure includeProperties: false, jdk: '', results: [[path: 'allure-results']]
             }
         }
+    }
 
-        stage('Upload Evidence to Nexus') {
-            when {
-                always
-            }
-            steps {
-                script {
-                    def timestamp = new Date().format('yyyy-MM-dd_HH-mm-ss')
-                    def buildNumber = env.BUILD_NUMBER
+    post {
+        always {
+            // Gerar relatório Allure
+            allure([
+                includeProperties: false,
+                jdk: '',
+                properties: [],
+                reportBuildPolicy: 'ALWAYS',
+                results: [[path: 'allure-results']]
+            ])
+            
+            // Arquivos de evidência
+            archiveArtifacts artifacts: 'test-results/**/*', allowEmptyArchive: true
+            archiveArtifacts artifacts: 'allure-results/**/*', allowEmptyArchive: true
+            
+            // Upload para Nexus
+            script {
+                def timestamp = new Date().format('yyyy-MM-dd_HH-mm-ss')
+                def buildNumber = env.BUILD_NUMBER
+                
+                sh '''
+                    echo "📤 Fazendo upload das evidências para o Nexus..."
                     
-                    sh '''
-                        echo "📤 Fazendo upload das evidências para o Nexus..."
-                        
-                        # Criar diretório temporário
-                        mkdir -p /tmp/evidence-upload
-                        
-                        # Copiar evidências
-                        cp -r test-results/screenshots /tmp/evidence-upload/ 2>/dev/null || echo "Nenhuma screenshot encontrada"
-                        cp -r test-results/videos /tmp/evidence-upload/ 2>/dev/null || echo "Nenhum vídeo encontrado"
-                        cp -r allure-results /tmp/evidence-upload/ 2>/dev/null || echo "Nenhum resultado Allure encontrado"
-                        
-                        # Criar arquivo de informações do build
-                        cat > /tmp/evidence-upload/build-info.txt << EOF
+                    # Criar diretório temporário
+                    mkdir -p /tmp/evidence-upload
+                    
+                    # Copiar evidências
+                    cp -r test-results/screenshots /tmp/evidence-upload/ 2>/dev/null || echo "Nenhuma screenshot encontrada"
+                    cp -r test-results/videos /tmp/evidence-upload/ 2>/dev/null || echo "Nenhum vídeo encontrado"
+                    cp -r allure-results /tmp/evidence-upload/ 2>/dev/null || echo "Nenhum resultado Allure encontrado"
+                    
+                    # Criar arquivo de informações do build
+                    cat > /tmp/evidence-upload/build-info.txt << EOF
 Build Number: ${BUILD_NUMBER}
 Timestamp: ${timestamp}
 Branch: ${GIT_BRANCH}
 Commit: ${GIT_COMMIT}
 Jenkins URL: ${BUILD_URL}
 EOF
-                        
-                        # Fazer upload para Nexus
-                        cd /tmp/evidence-upload
-                        tar -czf evidence-${BUILD_NUMBER}-${timestamp}.tar.gz *
-                        
-                        # Upload usando curl
-                        curl -u ${NEXUS_USER}:${NEXUS_PASS} \
-                             --upload-file evidence-${BUILD_NUMBER}-${timestamp}.tar.gz \
-                             ${NEXUS_URL}/repository/playwright-evidence/evidence-${BUILD_NUMBER}-${timestamp}.tar.gz
-                        
-                        echo "✅ Upload concluído!"
-                        echo "🔗 URL: ${NEXUS_URL}/repository/playwright-evidence/evidence-${BUILD_NUMBER}-${timestamp}.tar.gz"
-                    '''
-                }
-            }
-        }
-
-        stage('Upload Allure Report to Nexus') {
-            when {
-                always
-            }
-            steps {
-                script {
-                    def timestamp = new Date().format('yyyy-MM-dd_HH-mm-ss')
-                    def buildNumber = env.BUILD_NUMBER
                     
-                    sh '''
-                        echo "📤 Fazendo upload do relatório Allure para o Nexus..."
-                        
-                        # Criar diretório temporário para relatórios
-                        mkdir -p /tmp/reports-upload
-                        
-                        # Copiar relatório Allure gerado pelo Jenkins
-                        cp -r allure-report /tmp/reports-upload/
-                        cp -r test-results /tmp/reports-upload/ 2>/dev/null || echo "Nenhum resultado de teste encontrado"
-                        cp -r allure-results /tmp/reports-upload/ 2>/dev/null || echo "Nenhum resultado Allure encontrado"
-                        
-                        # Criar arquivo de informações do build
-                        cat > /tmp/reports-upload/build-info.txt << EOF
+                    # Fazer upload para Nexus
+                    cd /tmp/evidence-upload
+                    tar -czf evidence-${BUILD_NUMBER}-${timestamp}.tar.gz *
+                    
+                    # Upload usando curl
+                    curl -u ${NEXUS_USER}:${NEXUS_PASS} \
+                         --upload-file evidence-${BUILD_NUMBER}-${timestamp}.tar.gz \
+                         ${NEXUS_URL}/repository/playwright-evidence/evidence-${BUILD_NUMBER}-${timestamp}.tar.gz
+                    
+                    echo "✅ Upload de evidências concluído!"
+                    echo "🔗 URL: ${NEXUS_URL}/repository/playwright-evidence/evidence-${BUILD_NUMBER}-${timestamp}.tar.gz"
+                '''
+                
+                sh '''
+                    echo "📤 Fazendo upload do relatório Allure para o Nexus..."
+                    
+                    # Criar diretório temporário para relatórios
+                    mkdir -p /tmp/reports-upload
+                    
+                    # Copiar relatório Allure gerado pelo Jenkins
+                    cp -r allure-report /tmp/reports-upload/ 2>/dev/null || echo "Nenhum relatório Allure encontrado"
+                    cp -r test-results /tmp/reports-upload/ 2>/dev/null || echo "Nenhum resultado de teste encontrado"
+                    cp -r allure-results /tmp/reports-upload/ 2>/dev/null || echo "Nenhum resultado Allure encontrado"
+                    
+                    # Criar arquivo de informações do build
+                    cat > /tmp/reports-upload/build-info.txt << EOF
 Build Number: ${BUILD_NUMBER}
 Timestamp: ${timestamp}
 Branch: ${GIT_BRANCH}
@@ -144,11 +144,12 @@ Commit: ${GIT_COMMIT}
 Jenkins URL: ${BUILD_URL}
 Allure Report URL: ${NEXUS_URL}/repository/playwright-reports/build-${BUILD_NUMBER}/index.html
 EOF
-                        
-                        # Fazer upload para Nexus (estrutura de pastas)
-                        cd /tmp/reports-upload
-                        
-                        # Upload do relatório Allure como pasta
+                    
+                    # Fazer upload para Nexus (estrutura de pastas)
+                    cd /tmp/reports-upload
+                    
+                    # Upload do relatório Allure como pasta
+                    if [ -d "allure-report" ]; then
                         echo "Fazendo upload do relatório Allure..."
                         cd allure-report
                         for file in $(find . -type f); do
@@ -156,25 +157,21 @@ EOF
                                  --upload-file "$file" \
                                  ${NEXUS_URL}/repository/playwright-reports/build-${BUILD_NUMBER}/"$file"
                         done
-                        
-                        # Upload dos outros arquivos
                         cd ..
-                        tar -czf reports-${BUILD_NUMBER}-${timestamp}.tar.gz test-results allure-results build-info.txt
-                        curl -u ${NEXUS_USER}:${NEXUS_PASS} \
-                             --upload-file reports-${BUILD_NUMBER}-${timestamp}.tar.gz \
-                             ${NEXUS_URL}/repository/playwright-reports/reports-${BUILD_NUMBER}-${timestamp}.tar.gz
-                        
-                        echo "✅ Upload de relatórios concluído!"
-                        echo "🔗 Relatório Allure: ${NEXUS_URL}/repository/playwright-reports/build-${BUILD_NUMBER}/index.html"
-                        echo "🔗 Arquivos compactados: ${NEXUS_URL}/repository/playwright-reports/reports-${BUILD_NUMBER}-${timestamp}.tar.gz"
-                    '''
-                }
+                    fi
+                    
+                    # Upload dos outros arquivos
+                    tar -czf reports-${BUILD_NUMBER}-${timestamp}.tar.gz test-results allure-results build-info.txt 2>/dev/null || tar -czf reports-${BUILD_NUMBER}-${timestamp}.tar.gz allure-results build-info.txt
+                    curl -u ${NEXUS_USER}:${NEXUS_PASS} \
+                         --upload-file reports-${BUILD_NUMBER}-${timestamp}.tar.gz \
+                         ${NEXUS_URL}/repository/playwright-reports/reports-${BUILD_NUMBER}-${timestamp}.tar.gz
+                    
+                    echo "✅ Upload de relatórios concluído!"
+                    echo "🔗 Relatório Allure: ${NEXUS_URL}/repository/playwright-reports/build-${BUILD_NUMBER}/index.html"
+                    echo "🔗 Arquivos compactados: ${NEXUS_URL}/repository/playwright-reports/reports-${BUILD_NUMBER}-${timestamp}.tar.gz"
+                '''
             }
-        }
-    }
-
-    post {
-        always {
+            
             // Limpar arquivos temporários
             sh 'rm -rf /tmp/evidence-upload /tmp/reports-upload'
         }
