@@ -134,9 +134,11 @@ EOF
                         # Upload do relatório Allure como pasta
                         echo "Fazendo upload do relatório Allure..."
                         cd allure-report
-                        find . -type f -exec curl -u ${NEXUS_USER}:${NEXUS_PASS} \
-                             --upload-file {} \
-                             ${NEXUS_URL}/repository/playwright-reports/build-${BUILD_NUMBER}/{} \;
+                        for file in $(find . -type f); do
+                            curl -u ${NEXUS_USER}:${NEXUS_PASS} \
+                                 --upload-file "$file" \
+                                 ${NEXUS_URL}/repository/playwright-reports/build-${BUILD_NUMBER}/"$file"
+                        done
                         
                         # Upload dos outros arquivos
                         cd ..
