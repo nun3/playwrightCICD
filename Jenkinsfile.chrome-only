@@ -97,23 +97,19 @@ EOF
             }
         }
 
-        stage('Generate and Upload Allure Report to Nexus') {
+        stage('Upload Allure Report to Nexus') {
             steps {
                 script {
                     def timestamp = new Date().format('yyyy-MM-dd_HH-mm-ss')
                     def buildNumber = env.BUILD_NUMBER
                     
                     sh '''
-                        echo "📤 Gerando e fazendo upload do relatório Allure para o Nexus..."
-                        
-                        # Gerar relatório Allure
-                        echo "Gerando relatório Allure..."
-                        npx allure generate allure-results --clean -o allure-report
+                        echo "📤 Fazendo upload do relatório Allure para o Nexus..."
                         
                         # Criar diretório temporário para relatórios
                         mkdir -p /tmp/reports-upload
                         
-                        # Copiar relatório Allure gerado
+                        # Copiar relatório Allure gerado pelo Jenkins
                         cp -r allure-report /tmp/reports-upload/
                         cp -r test-results /tmp/reports-upload/ 2>/dev/null || echo "Nenhum resultado de teste encontrado"
                         cp -r allure-results /tmp/reports-upload/ 2>/dev/null || echo "Nenhum resultado Allure encontrado"
